@@ -13,7 +13,6 @@ TODO Features
 
 
 REFACTORS
-- Dashes needed as its own method
 - Todo as its own Class with sub tasks, completion status, etc.
 - just one instance of BufferReader?
 - openChosenFile() is pretty ugly
@@ -53,17 +52,11 @@ public class Todo {
     }
 
     public void printOpeningMenuVisual(List<String> todoTitles) {
-        int dashesNeeded = todoTitles.stream().map(String::length).max(Integer::compare).orElse(1) + 7;
-        if (todoTitles.size() >= 10) dashesNeeded += 1;
-        String dashes = "";
-        for (int i = 0; i < dashesNeeded; i++) {
-            dashes += "-";
-        }
-        final String finalDashes = dashes; // here because a "final" is needed.
-        System.out.println(dashes);
+        String dashesNeeded = dashesNeeded(todoTitles, false);
+        System.out.println(dashesNeeded);
         formatTaskLines(todoTitles, false).forEach(task -> {
             System.out.println(task);
-            System.out.println(finalDashes);
+            System.out.println(dashesNeeded);
         });
         System.out.println("");
         System.out.println("Which file would you like to open?");
@@ -87,6 +80,7 @@ public class Todo {
         }
     }
 
+    // TODO fix this up. This method is super ugly.
     public void openChosenFile(String fileName) {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
@@ -156,20 +150,12 @@ public class Todo {
             return;
         }
 
-        int dashesNeeded = tasks.stream()
-                .map(task -> task.getName().length())
-                .max(Integer::compare)
-                .orElse(1) + 13;
-
-        if (tasks.size() >= 10) dashesNeeded += 1;
-        StringBuilder dashes = new StringBuilder();
-        dashes.append("-".repeat(dashesNeeded));
-        final String finalDashes = dashes.toString(); // here becuase a "final" is needed.
+        String dashesNeeded = dashesNeeded(tasks, true);
         System.out.println("*** " + title + " ***");
-        System.out.println(finalDashes);
+        System.out.println(dashesNeeded);
         formatTaskLines(null, true).forEach(task -> {
             System.out.println(task);
-            System.out.println(finalDashes);
+            System.out.println(dashesNeeded);
         });
         System.out.println();
     }
@@ -328,6 +314,24 @@ public class Todo {
         }
         System.out.println("--------------");
     }
+
+    private String dashesNeeded(List<?> referenceList, boolean containsTasks) {
+        if (!referenceList.isEmpty() && referenceList.get(0) instanceof Task) {
+            referenceList = referenceList.stream()
+                    .map(task -> (Task)task)
+                    .map(task -> task.getName())
+                    .collect(Collectors.toList());
+        }
+        int dashesNeeded = referenceList.stream()
+                .map(referenceItem -> (String) referenceItem)
+                .map(String::length)
+                .max(Integer::compare).orElse(1) + 7;
+
+        if (containsTasks) { dashesNeeded += 6; }
+        if (referenceList.size() >= 10) { dashesNeeded += 1; }
+        return "-".repeat(dashesNeeded);
+    }
+
 
     public void requestNextAction(boolean showFullMenu) {
         if (showFullMenu) {
