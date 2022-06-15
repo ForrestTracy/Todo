@@ -1,14 +1,12 @@
-import javax.sound.midi.SysexMessage;
 import java.io.*;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 /*
 TODO Features
-- merge formatTaskLines() & formatTopMenuLines
 - create saved_todos dir if it doesn't exist
 - have sub-tasks
 - undo last action
@@ -63,7 +61,7 @@ public class Todo {
         }
         final String finalDashes = dashes; // here because a "final" is needed.
         System.out.println(dashes);
-        formatTopMenuLines(todoTitles).forEach(task -> {
+        formatTaskLines(todoTitles, false).forEach(task -> {
             System.out.println(task);
             System.out.println(finalDashes);
         });
@@ -89,19 +87,6 @@ public class Todo {
         }
     }
 
-    // TODO merge this with formatTaskLines()
-    public List<String> formatTopMenuLines(List<String> tasks) {
-        List<String> formattedLines = new ArrayList<>();
-        final int longest = tasks.stream().map(String::length).max(Integer::compare).orElse(1);
-        for (int i = 0; i < tasks.size(); i++) {
-            // once the task count gets past 10 (double digits), the row gets wider
-            String tenSpace = i < 9 && tasks.size() > 9 ? " " : "";
-            formattedLines.add("| " + (i + 1) + tenSpace + " | " + tasks.get(i) + generateWhiteSpaceEnd(longest, tasks.get(i).length()) + "|");
-        }
-        formattedLines.add("| N | Create New Todo file |");
-        return formattedLines;
-    }
-
     public void openChosenFile(String fileName) {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
@@ -120,7 +105,7 @@ public class Todo {
                         lastStatus = workingString;
                     } else {
                         taskOrStatus = "TASK";
-                        addItem(lastStatus, Boolean.valueOf(workingString), tasks.size());
+                        addTask(lastStatus, Boolean.valueOf(workingString), tasks.size());
                         lastStatus = "";
                     }
                     workingString = "";
@@ -182,7 +167,7 @@ public class Todo {
         final String finalDashes = dashes.toString(); // here becuase a "final" is needed.
         System.out.println("*** " + title + " ***");
         System.out.println(finalDashes);
-        formatTaskLines().forEach(task -> {
+        formatTaskLines(null, true).forEach(task -> {
             System.out.println(task);
             System.out.println(finalDashes);
         });
@@ -206,27 +191,36 @@ public class Todo {
             // do nothing. Leave it at index 0
         }
         if (newPosition < 0 || newPosition > tasks.size()) newPosition = tasks.size();
-        addItem(newItem, false, newPosition);
+        addTask(newItem, false, newPosition);
     }
 
-    public void addItem(String name, boolean status, Integer newPosition) {
+    public void addTask(String name, boolean status, Integer newPosition) {
         if (newPosition == null) {
             newPosition = 0;
         }
         tasks.add(newPosition, new Task(name, status));
     }
 
-    public List<String> formatTaskLines() {
+    public List<String> formatTaskLines(List<String> listToFormat, boolean statusNeeded) {
+        if (listToFormat == null) {
+            listToFormat = tasks.stream()
+                    .map(Task::getName)
+                    .collect(Collectors.toList());
+        }
         List<String> formattedLines = new ArrayList<>();
-        final int longest = tasks.stream()
-                .map( task -> task.getName().length())
+        final int longest = listToFormat.stream()
+                .map(String::length)
                 .max(Integer::compare)
                 .orElse(1);
-        for (int i = 0; i < tasks.size(); i++) {
+        for (int i = 0; i < listToFormat.size(); i++) {
             // once the task count gets past 10 (double digits), the row gets wider
-            String tenSpace = i < 9 && tasks.size() > 9 ? " " : "";
-            String status = tasks.get(i).status ? "x" : " ";
-            formattedLines.add("| " + (i + 1) + tenSpace + " | " + status + " | " + tasks.get(i).getName() + generateWhiteSpaceEnd(longest, tasks.get(i).getName().length()) + "|");
+            String tenSpace = i < 9 && listToFormat.size() > 9 ? " " : "";
+            String status = "|   ";
+            if (statusNeeded) {
+                status = tasks.get(i).status ? "x" : " ";
+                status = "| " + (i + 1) + tenSpace + " | " + status + " | ";
+            }
+            formattedLines.add(status + listToFormat.get(i) + generateWhiteSpaceEnd(longest, listToFormat.get(i).length()) + "|");
         }
         return formattedLines;
     }
@@ -300,11 +294,11 @@ public class Todo {
             if (fromPosition == newPosition) {
                 return;
             } else if (fromPosition < newPosition) {
-                addItem(task.getName(), task.getStatus(), newPosition + 1);
+                addTask(task.getName(), task.getStatus(), newPosition + 1);
                 removeItem(fromPosition);
             } else {
                 removeItem(fromPosition);
-                addItem(task.getName(), task.getStatus(), newPosition);
+                addTask(task.getName(), task.getStatus(), newPosition);
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
@@ -349,34 +343,16 @@ public class Todo {
         String nextAction = scanner.nextLine();
         boolean showDeleted = false;
         switch (nextAction) {
-            case "x":
-                quit = true;
-                break;
-            case "a":
-                addItemDialogue();
-                break;
-            case "r":
-                removeItemDialogue();
-                break;
-            case "c":
-                toggleComplete();
-                break;
-            case "m":
-                moveTask();
-                break;
-            case "t":
-                changeTitle();
-                break;
-            case "u":
-                updateTaskName();
-                break;
-            case "pt":
-                populatePt();
-                break;
-            case "sd":
-                showDeleted = true;
-                break;
-            default: {
+            case "x" -> quit = true;
+            case "a" -> addItemDialogue();
+            case "r" -> removeItemDialogue();
+            case "c" -> toggleComplete();
+            case "m" -> moveTask();
+            case "t" -> changeTitle();
+            case "u" -> updateTaskName();
+            case "pt" -> populatePt();
+            case "sd" -> showDeleted = true;
+            default -> {
                 System.out.println("Not a valid choice");
                 requestNextAction(false); // this causes an extra printVisual() because there is no return but a return would recall requestNextAction(true)
             }
