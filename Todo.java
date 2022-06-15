@@ -28,12 +28,7 @@ REFACTORS
 
 public class Todo {
 
-    // might be nice to use a Map<String, Boolean> implementation for tasks/taskStatus but then I can't get by index.
-//    private static List<String> tasks = new ArrayList<>();
-//    private static List<Boolean> taskStatus = new ArrayList<>();
-
     private static List<Task> tasks = new ArrayList<>();
-
     private static List<Task> recentlyDeleted = new ArrayList<>();
     private static String title = "Default Title";
     private static Scanner scanner = new Scanner(System.in);
@@ -77,7 +72,6 @@ public class Todo {
         String chosenFileName = null;
         while (chosenFileName == null) {
             chosenFileName = chooseFileToOpen(todoTitles);
-            System.out.println(chosenFileName + "doing anything?"); // TODO I don't think this was doing anything
         }
         openChosenFile(chosenFileName);
     }
@@ -159,50 +153,11 @@ public class Todo {
         } catch (IOException e) {
             System.out.println("An error occurred writing the file.");
         }
-
-//        String strippedTitle = title.strip().replaceAll("\\s+", "_");
-//        try {
-//            FileWriter writer = new FileWriter("./saved_todos/" + strippedTitle + ".txt");
-//            BufferedWriter buffWriter = new BufferedWriter(writer);
-//            buffWriter.write(singleSaveLineToReopen());
-//            buffWriter.newLine();
-//            buffWriter.write("Tasks and Statuses:");
-//            buffWriter.newLine();
-//            buffWriter.newLine();
-//            buffWriter.write("complete?    task name");
-//            buffWriter.newLine();
-//            buffWriter.write("_________    _________");
-//            buffWriter.newLine();
-//            for (int i = 0; i < tasks.size(); i++) {
-//                buffWriter.write(taskStatus.get(i) + "         " + tasks.get(i));
-//                buffWriter.newLine();
-//            }
-//            buffWriter.write("_______________");
-//            buffWriter.newLine();
-//            buffWriter.write("Deleted Tasks:");
-//            buffWriter.newLine();
-//            buffWriter.write("_______________");
-//            buffWriter.newLine();
-//            for (String deleted : recentlyDeleted) {
-//                buffWriter.write(deleted);
-//                buffWriter.newLine();
-//            }
-//            buffWriter.close();
-//        } catch (IOException e) {
-//            System.out.println("An error occurred writing the file.");
-//        }
     }
 
-//    public String singleSaveLineToReopen() {
-//        String taskString = "";
-//        for (int i = (tasks.size() - 1); i >= 0; i--) {
-//            taskString = tasks.get(i) + "," + taskStatus.get(i).toString() + "," + taskString;
-//        }
-//        return taskString;
-//    }
-
     public void printVisual() {
-        System.out.print("\033[H\033[2J"); // this line clears and resets the text to top of the screen on Linux terminals
+        // next line clears and resets the text to top of the screen on Linux terminals
+        System.out.print("\033[H\033[2J");
         System.out.flush();
         System.out.println();
 
@@ -223,13 +178,10 @@ public class Todo {
 
         if (tasks.size() >= 10) dashesNeeded += 1;
         StringBuilder dashes = new StringBuilder();
-        for (int i = 0; i < dashesNeeded; i++) {
-            dashes.append("-");
-        }
+        dashes.append("-".repeat(dashesNeeded));
         final String finalDashes = dashes.toString(); // here becuase a "final" is needed.
         System.out.println("*** " + title + " ***");
         System.out.println(finalDashes);
-//        formatTaskLines(tasks).forEach(task -> {  // TODO why passing in a class level var??
         formatTaskLines().forEach(task -> {
             System.out.println(task);
             System.out.println(finalDashes);
@@ -264,7 +216,6 @@ public class Todo {
         tasks.add(newPosition, new Task(name, status));
     }
 
-//    public List<String> formatTaskLines(List<Task> tasks) {
     public List<String> formatTaskLines() {
         List<String> formattedLines = new ArrayList<>();
         final int longest = tasks.stream()
@@ -281,12 +232,7 @@ public class Todo {
     }
 
     public String generateWhiteSpaceEnd(int longest, int current) {
-        String whiteSpace = "  ";
-        int difference = longest - current;
-        for (int i = 0; i < difference; i++) {
-            whiteSpace += " ";
-        }
-        return whiteSpace;
+        return " ".repeat(longest - current + 2);
     }
 
     public void removeItemDialogue() {
@@ -327,7 +273,6 @@ public class Todo {
             if (togglePosition < 0 || togglePosition > tasks.size()) {
                 throw new IllegalArgumentException();
             }
-//            taskStatus.set(togglePosition, !taskStatus.get(togglePosition));
             tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getStatus());
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
