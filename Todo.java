@@ -1,6 +1,7 @@
 import javax.sound.midi.SysexMessage;
 import java.io.*;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.List;
 import java.util.ArrayList;
@@ -40,50 +41,37 @@ public class Todo {
         greetingMenu();
         printVisual();
         while (!quit) {
-            requestNextAction();
+            requestNextAction(true);
         }
     }
 
     private static void greetingMenu() {
-        boolean engageTopMenu = true;
-        while (engageTopMenu) {
-            try {
-                BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/todo_titles.txt"));
-                StringBuilder stringBuilder = new StringBuilder();
-                String line = bufferedReader.readLine();
-                while (line != null) {
-                    stringBuilder.append(line);
-                    stringBuilder.append(System.lineSeparator());
-                    line = bufferedReader.readLine();
-                }
-                String everything = stringBuilder.toString();
-                List<String> todos = new ArrayList<>();
-                String workingString = "";
-                for (int i=0; i < everything.length(); i++) {
-                    if (everything.charAt(i) == ',') {
-                        todos.add(workingString);
-                        workingString = "";
-                    } else {
-                        workingString += everything.charAt(i);
-                    }
-                }
-                todos.add("Create a new TODO list");
-                printTopMenuVisual(todos);
-            } catch (FileNotFoundException ex) {
-                System.out.println("file not found");
-            } catch (IOException ex) {
-                System.out.println("There was an error and I need to drill down the right exception");
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/todo_titles.txt"));
+            StringBuilder stringBuilder = new StringBuilder();
+            String line = bufferedReader.readLine();
+            while (line != null) {
+                stringBuilder.append(line);
+                stringBuilder.append(System.lineSeparator());
+                line = bufferedReader.readLine();
             }
-            engageTopMenu = false;
+            String everything = stringBuilder.toString();
+            List<String> todos = Arrays.asList(everything.split("\\s*,\\s*"));
+            printOpeningMenuVisual(todos);
+        } catch (FileNotFoundException ex) {
+            System.out.println("file not found");
+        } catch (IOException ex) {
+            System.out.println("There was an error and I need to drill down the right exception");
         }
-
     }
 
-    private static void printTopMenuVisual(List<String> todos) {
+    private static void printOpeningMenuVisual(List<String> todos) {
         int dashesNeeded = todos.stream().map(String::length).max(Integer::compare).orElse(1) + 7;
         if (todos.size() >= 10) dashesNeeded += 1;
         String dashes = "";
-        for(int i=0; i < dashesNeeded; i++) { dashes += "-"; }
+        for (int i = 0; i < dashesNeeded; i++) {
+            dashes += "-";
+        }
         final String finalDashes = dashes; // here becuase a "final" is needed.
         System.out.println(dashes);
         formatTopMenuLines(todos).forEach(task -> {
@@ -97,9 +85,7 @@ public class Todo {
             chosenFileName = chooseFileToOpen(todos);
             System.out.println(chosenFileName);
         }
-//        System.out.println("file: " + chosenFileName);
         openChosenFile(chosenFileName);
-
     }
 
     private static String chooseFileToOpen(List<String> todos) {
@@ -111,8 +97,7 @@ public class Todo {
             return todos.get(openIndex - 1);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
             System.out.println("Invalid entry. Try again.");
-            chooseFileToOpen(todos);
-            return null;  // needed?
+            return chooseFileToOpen(todos);
         }
     }
 
@@ -120,11 +105,12 @@ public class Todo {
     private static List<String> formatTopMenuLines(List<String> tasks) {
         List<String> formattedLines = new ArrayList<>();
         final int longest = tasks.stream().map(String::length).max(Integer::compare).orElse(1);
-        for (int i=0; i < tasks.size(); i++) {
+        for (int i = 0; i < tasks.size(); i++) {
             // once the task count gets past 10 (double digits), the row gets wider
             String tenSpace = i < 9 && tasks.size() > 9 ? " " : "";
-            formattedLines.add("| " + (i+1) + tenSpace + " | " + tasks.get(i) + generateWhiteSpaceEnd(longest, tasks.get(i).length()) + "|");
+            formattedLines.add("| " + (i + 1) + tenSpace + " | " + tasks.get(i) + generateWhiteSpaceEnd(longest, tasks.get(i).length()) + "|");
         }
+        formattedLines.add("| N | Create New Todo file |");
         return formattedLines;
     }
 
@@ -139,7 +125,7 @@ public class Todo {
             String lastStatus = "";
             String taskOrStatus = "TASK";
             title = fileName;
-            for (int i=0; i < rawTodos.length(); i++) {
+            for (int i = 0; i < rawTodos.length(); i++) {
                 if (rawTodos.charAt(i) == ',') {
                     if (taskOrStatus.equals("TASK")) {
                         taskOrStatus = "STATUS";
@@ -162,26 +148,37 @@ public class Todo {
     }
 
     private static void writeToFile() {
-        String strippedTitle = title.replaceAll("\\s+","_");
+        String strippedTitle = title.replaceAll("\\s+", "_");
         try {
             FileWriter writer = new FileWriter("./saved_todos/" + strippedTitle + ".txt");
             BufferedWriter buffWriter = new BufferedWriter(writer);
-            buffWriter.write(singleSaveLineToReopen());  buffWriter.newLine();
-            buffWriter.write("Tasks and Statuses:");      buffWriter.newLine(); buffWriter.newLine();
-            buffWriter.write("complete?    task name");   buffWriter.newLine();
-            buffWriter.write("_________    _________");   buffWriter.newLine();
-            for (int i=0; i < tasks.size(); i++) {
-                buffWriter.write(taskStatus.get(i) + "         "  + tasks.get(i));
+            buffWriter.write(singleSaveLineToReopen());
+            buffWriter.newLine();
+            buffWriter.write("Tasks and Statuses:");
+            buffWriter.newLine();
+            buffWriter.newLine();
+            buffWriter.write("complete?    task name");
+            buffWriter.newLine();
+            buffWriter.write("_________    _________");
+            buffWriter.newLine();
+            for (int i = 0; i < tasks.size(); i++) {
+                buffWriter.write(taskStatus.get(i) + "         " + tasks.get(i));
                 buffWriter.newLine();
             }
-            buffWriter.write("_______________");  buffWriter.newLine();
-            buffWriter.write("Deleted Tasks:");   buffWriter.newLine();
-            buffWriter.write("_______________");  buffWriter.newLine();
+            buffWriter.write("_______________");
+            buffWriter.newLine();
+            buffWriter.write("Deleted Tasks:");
+            buffWriter.newLine();
+            buffWriter.write("_______________");
+            buffWriter.newLine();
             for (String deleted : recentlyDeleted) {
-                buffWriter.write(deleted);  buffWriter.newLine();
+                buffWriter.write(deleted);
+                buffWriter.newLine();
             }
             buffWriter.close();
-        } catch (IOException e) { System.out.println("An error occurred writing the file."); }
+        } catch (IOException e) {
+            System.out.println("An error occurred writing the file.");
+        }
     }
 
     private static String singleSaveLineToReopen() {
@@ -193,8 +190,9 @@ public class Todo {
     }
 
     private static void printVisual() {
-        // next line clears and resets the text to top of the screen on Linux terminals
-        System.out.print("\033[H\033[2J");  System.out.flush();  System.out.println();
+        System.out.print("\033[H\033[2J"); // this line clears and resets the text to top of the screen on Linux terminals
+        System.out.flush();
+        System.out.println();
 
         if (quit) {
             System.out.println("Closing ToDo program. Final state of the tasks and statuses:");
@@ -209,7 +207,7 @@ public class Todo {
         int dashesNeeded = tasks.stream().map(String::length).max(Integer::compare).orElse(1) + 13;
         if (tasks.size() >= 10) dashesNeeded += 1;
         String dashes = "";
-        for(int i=0; i < dashesNeeded; i++) { dashes += "-"; }
+        for (int i = 0; i < dashesNeeded; i++) { dashes += "-"; }
         final String finalDashes = dashes; // here becuase a "final" is needed.
         System.out.println("*** " + title + " ***");
         System.out.println(finalDashes);
@@ -231,8 +229,10 @@ public class Todo {
         if (newItem.equals("cc")) return;
         System.out.println("Position of the new item: ");
         int newPosition = 0;
-        try { newPosition = Integer.parseInt(scanner.nextLine()) - 1; }
-        catch (Exception e) {} // do nothing. Leave it at index 0
+        try {
+            newPosition = Integer.parseInt(scanner.nextLine()) - 1;
+        } catch (Exception e) {
+        } // do nothing. Leave it at index 0
         if (newPosition < 0 || newPosition > tasks.size()) newPosition = tasks.size();
         addItem(newItem, false, newPosition);
     }
@@ -248,11 +248,11 @@ public class Todo {
     private static List<String> formatTaskLines(List<String> tasks) {
         List<String> formattedLines = new ArrayList<>();
         final int longest = tasks.stream().map(String::length).max(Integer::compare).orElse(1);
-        for (int i=0; i < tasks.size(); i++) {
+        for (int i = 0; i < tasks.size(); i++) {
             // once the task count gets past 10 (double digits), the row gets wider
             String tenSpace = i < 9 && tasks.size() > 9 ? " " : "";
             String x = taskStatus.get(i) == true ? "x" : " ";
-            formattedLines.add("| " + (i+1) + tenSpace + " | " + x + " | " + tasks.get(i) + generateWhiteSpaceEnd(longest, tasks.get(i).length()) + "|");
+            formattedLines.add("| " + (i + 1) + tenSpace + " | " + x + " | " + tasks.get(i) + generateWhiteSpaceEnd(longest, tasks.get(i).length()) + "|");
         }
         return formattedLines;
     }
@@ -260,7 +260,7 @@ public class Todo {
     private static String generateWhiteSpaceEnd(int longest, int current) {
         String whiteSpace = "  ";
         int difference = longest - current;
-        for (int i=0; i < difference; i++) {
+        for (int i = 0; i < difference; i++) {
             whiteSpace += " ";
         }
         return whiteSpace;
@@ -292,7 +292,7 @@ public class Todo {
 
     private static void populatePt() {
         List<String> ptList = List.of("90 90 back stretches", "heel raises", "ice", "scraping", "hip tilt things", "one legged squats", "heel raises", "90 90 back stretches", "ice");
-        ptList.forEach( item -> {
+        ptList.forEach(item -> {
             tasks.add(item);
             taskStatus.add(false);
         });
@@ -303,7 +303,9 @@ public class Todo {
         int togglePosition = 0;
         try {
             togglePosition = Integer.parseInt(scanner.nextLine()) - 1;
-            if (togglePosition < 0 || togglePosition > tasks.size()) { throw new IllegalArgumentException(); }
+            if (togglePosition < 0 || togglePosition > tasks.size()) {
+                throw new IllegalArgumentException();
+            }
             taskStatus.set(togglePosition, !taskStatus.get(togglePosition));
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
@@ -348,7 +350,9 @@ public class Todo {
         System.out.println("Task to rename:");
         try {
             int renamePos = Integer.parseInt(scanner.nextLine()) - 1;
-            if (renamePos < 0 || renamePos > tasks.size()) { throw new IllegalArgumentException(); }
+            if (renamePos < 0 || renamePos > tasks.size()) {
+                throw new IllegalArgumentException();
+            }
             System.out.println("New name:");
             String newName = scanner.nextLine();
             tasks.set(renamePos, newName);
@@ -366,18 +370,19 @@ public class Todo {
         System.out.println("--------------");
     }
 
-    private static void requestNextAction() {
-        System.out.println("a  = add task       c  = toggle complete");
-        System.out.println("r  = remove task    m  = move task");
-        System.out.println("t  = change title   u  = update task name");
-        System.out.println("pt = populate PT    sd = show recently deleted");
-        System.out.println("x  = exit ToDo      cc or < 0 to cancel any action");
-        System.out.println("   ");
-        System.out.println("What would you like to do next?:  ");
+    private static void requestNextAction(boolean showFullMenu) {
+        if (showFullMenu) {
+            System.out.println("a  = add task       c  = toggle complete");
+            System.out.println("r  = remove task    m  = move task");
+            System.out.println("t  = change title   u  = update task name");
+            System.out.println("pt = populate PT    sd = show recently deleted");
+            System.out.println("x  = exit ToDo      cc or < 0 to cancel any action");
+            System.out.println("   ");
+            System.out.println("What would you like to do next?:  ");
+        }
+
         String nextAction = scanner.nextLine();
-
         boolean showDeleted = false;
-
         switch (nextAction) {
             case "x"  : quit = true;           break;
             case "a"  : addItemDialogue();     break;
@@ -390,12 +395,14 @@ public class Todo {
             case "sd" : showDeleted = true;    break;
             default : {
                 System.out.println("Not a valid choice");
-                return;
+                requestNextAction(false); // this causes an extra printVisual() because there is no return but a return would recall requestNextAction(true)
             }
         }
         printVisual();
         writeToFile();
-        if (showDeleted) { showRecentlyDeleted(); }
+        if (showDeleted) {
+            showRecentlyDeleted();
+        }
     }
 
 }
