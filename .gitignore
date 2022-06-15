@@ -1,2 +1,7 @@
 Todo.class
+TodoDriver.class
 saved_todos/
+todo.iml
+.gitignore.swp
+.idea/
+.gitignore~

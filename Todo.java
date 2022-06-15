@@ -33,19 +33,19 @@ public class Todo {
     private static List<String> recentlyDeleted = new ArrayList<>();
     private static String title = "Default Title";
     private static Scanner scanner = new Scanner(System.in);
-    private static boolean quit = false;
+    public boolean quit = false;
 
 
-    public static void main(String[] args) {
-        System.out.println("    ");
-        greetingMenu();
-        printVisual();
-        while (!quit) {
-            requestNextAction(true);
-        }
-    }
+//    public static void main(String[] args) {
+//        System.out.println("    ");
+//        greetingMenu();
+//        printVisual();
+//        while (!quit) {
+//            requestNextAction(true);
+//        }
+//    }
 
-    private static void greetingMenu() {
+    public void greetingMenu() {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/todo_titles.txt"));
             StringBuilder stringBuilder = new StringBuilder();
@@ -65,7 +65,7 @@ public class Todo {
         }
     }
 
-    private static void printOpeningMenuVisual(List<String> todos) {
+    public void printOpeningMenuVisual(List<String> todos) {
         int dashesNeeded = todos.stream().map(String::length).max(Integer::compare).orElse(1) + 7;
         if (todos.size() >= 10) dashesNeeded += 1;
         String dashes = "";
@@ -88,7 +88,7 @@ public class Todo {
         openChosenFile(chosenFileName);
     }
 
-    private static String chooseFileToOpen(List<String> todos) {
+    public String chooseFileToOpen(List<String> todos) {
         try {
             int openIndex = Integer.parseInt(scanner.nextLine());
             if (openIndex < 0 || openIndex > todos.size()) {
@@ -102,7 +102,7 @@ public class Todo {
     }
 
     // TODO merge this with formatTaskLines()
-    private static List<String> formatTopMenuLines(List<String> tasks) {
+    public List<String> formatTopMenuLines(List<String> tasks) {
         List<String> formattedLines = new ArrayList<>();
         final int longest = tasks.stream().map(String::length).max(Integer::compare).orElse(1);
         for (int i = 0; i < tasks.size(); i++) {
@@ -114,7 +114,7 @@ public class Todo {
         return formattedLines;
     }
 
-    private static void openChosenFile(String fileName) {
+    public void openChosenFile(String fileName) {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
             StringBuilder stringBuilder = new StringBuilder();
@@ -147,7 +147,7 @@ public class Todo {
         }
     }
 
-    private static void writeToFile() {
+    public void writeToFile() {
         String strippedTitle = title.replaceAll("\\s+", "_");
         try {
             FileWriter writer = new FileWriter("./saved_todos/" + strippedTitle + ".txt");
@@ -181,7 +181,7 @@ public class Todo {
         }
     }
 
-    private static String singleSaveLineToReopen() {
+    public String singleSaveLineToReopen() {
         String taskString = "";
         for (int i = (tasks.size() - 1); i >= 0; i--) {
             taskString = tasks.get(i) + "," + taskStatus.get(i).toString() + "," + taskString;
@@ -189,7 +189,7 @@ public class Todo {
         return taskString;
     }
 
-    private static void printVisual() {
+    public void printVisual() {
         System.out.print("\033[H\033[2J"); // this line clears and resets the text to top of the screen on Linux terminals
         System.out.flush();
         System.out.println();
@@ -218,12 +218,12 @@ public class Todo {
         System.out.println();
     }
 
-    private static void changeTitle() {
+    public void changeTitle() {
         System.out.println("Enter the new title: ");
         title = scanner.nextLine().toUpperCase();
     }
 
-    private static void addItemDialogue() {
+    public void addItemDialogue() {
         System.out.println("Enter the new ToDo item: ");
         String newItem = scanner.nextLine();
         if (newItem.equals("cc")) return;
@@ -237,7 +237,7 @@ public class Todo {
         addItem(newItem, false, newPosition);
     }
 
-    private static void addItem(String newItem, boolean complete, Integer newPosition) {
+    public void addItem(String newItem, boolean complete, Integer newPosition) {
         if (newPosition == null) {
             newPosition = 0;
         }
@@ -245,7 +245,7 @@ public class Todo {
         taskStatus.add(newPosition, complete);
     }
 
-    private static List<String> formatTaskLines(List<String> tasks) {
+    public List<String> formatTaskLines(List<String> tasks) {
         List<String> formattedLines = new ArrayList<>();
         final int longest = tasks.stream().map(String::length).max(Integer::compare).orElse(1);
         for (int i = 0; i < tasks.size(); i++) {
@@ -257,7 +257,7 @@ public class Todo {
         return formattedLines;
     }
 
-    private static String generateWhiteSpaceEnd(int longest, int current) {
+    public String generateWhiteSpaceEnd(int longest, int current) {
         String whiteSpace = "  ";
         int difference = longest - current;
         for (int i = 0; i < difference; i++) {
@@ -266,7 +266,7 @@ public class Todo {
         return whiteSpace;
     }
 
-    private static void removeItemDialogue() {
+    public void removeItemDialogue() {
         System.out.println("Task to remove: ");
         int removeIndex = 0;
         try {
@@ -284,13 +284,13 @@ public class Todo {
         removeItem(removeIndex);
     }
 
-    private static void removeItem(int removeIndex) {
+    public void removeItem(int removeIndex) {
         recentlyDeleted.add(0, tasks.get(removeIndex));
         tasks.remove(removeIndex);
         taskStatus.remove(removeIndex);
     }
 
-    private static void populatePt() {
+    public void populatePt() {
         List<String> ptList = List.of("90 90 back stretches", "heel raises", "ice", "scraping", "hip tilt things", "one legged squats", "heel raises", "90 90 back stretches", "ice");
         ptList.forEach(item -> {
             tasks.add(item);
@@ -298,7 +298,7 @@ public class Todo {
         });
     }
 
-    private static void toggleComplete() {
+    public void toggleComplete() {
         System.out.println("Task to mark complete");
         int togglePosition = 0;
         try {
@@ -313,7 +313,7 @@ public class Todo {
         }
     }
 
-    private static void moveTask() {
+    public void moveTask() {
         System.out.println("Which task do you want to move?");
         try {
             int fromPosition = Integer.parseInt(scanner.nextLine()) - 1;
@@ -346,7 +346,7 @@ public class Todo {
         }
     }
 
-    private static void updateTaskName() {
+    public void updateTaskName() {
         System.out.println("Task to rename:");
         try {
             int renamePos = Integer.parseInt(scanner.nextLine()) - 1;
@@ -362,7 +362,7 @@ public class Todo {
         }
     }
 
-    private static void showRecentlyDeleted() {
+    public void showRecentlyDeleted() {
         System.out.println("Recently deleted:");
         for (String delItem : recentlyDeleted) {
             System.out.println("-" + delItem);
@@ -370,7 +370,7 @@ public class Todo {
         System.out.println("--------------");
     }
 
-    private static void requestNextAction(boolean showFullMenu) {
+    public void requestNextAction(boolean showFullMenu) {
         if (showFullMenu) {
             System.out.println("a  = add task       c  = toggle complete");
             System.out.println("r  = remove task    m  = move task");
