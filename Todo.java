@@ -1,4 +1,7 @@
+import java.awt.*;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.List;
@@ -7,6 +10,7 @@ import java.util.stream.Collectors;
 
 /*
 TODO Features
+- for links -> save them and show an (L) at the end for linked Task Objects
 - create saved_todos dir if it doesn't exist
 - have sub-tasks
 - Todo class with sub-tasks
@@ -84,7 +88,7 @@ public class Todo {
             }
             return todoTitles.get(openIndex - 1);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
-            return "new todo chosen"; // this String can be anyting that isn't already a title of a TODO list
+            return "new todo chosen"; // this String can be anything that isn't already a title of a TODO list
         }
     }
 
@@ -228,13 +232,15 @@ public class Todo {
             // once the task count gets past 10 (double digits), the row gets wider
             String tenSpace = i < 9 && listToFormat.size() > 9 ? " " : "";
             String prePendTask = "";
+            String postPendLink = "     ";
             if (lineTypeNeeded.equals(LineTypes.TASKS)) {
                 String status = tasks.get(i).status ? "x" : " ";
                 prePendTask = "| " + (i + 1) + tenSpace + " | " + status + " | ";
+                postPendLink = tasks.get(i).getLinkUrl() == null ? "     " : "  (L)";
             } else if (lineTypeNeeded.equals(LineTypes.TODO_TITLES)) {
                 prePendTask = "| " + (i + 1) + tenSpace + ": ";
             }
-            formattedLines.add(prePendTask + listToFormat.get(i) + generateWhiteSpaceEnd(longest, listToFormat.get(i).length()) + "|");
+            formattedLines.add(prePendTask + listToFormat.get(i) + generateWhiteSpaceEnd(longest, listToFormat.get(i).length()) + postPendLink + "|");
         }
         return formattedLines;
     }
@@ -346,7 +352,7 @@ public class Todo {
         int dashesNeeded = referenceList.stream()
                 .map(referenceItem -> (String) referenceItem)
                 .map(String::length)
-                .max(Integer::compare).orElse(1) + 7;
+                .max(Integer::compare).orElse(1) + 12; // extra needed for (L) link 
 
         if (containsTasks) { dashesNeeded += 6; }
         if (referenceList.size() >= 10) { dashesNeeded += 1; }
@@ -358,33 +364,42 @@ public class Todo {
     }
 
     private void openLinkDialogue() {
-
-        /*
-        Runtime.getRuntime().exec("/bin/bash -c your_command");
-
-        Update: As suggested by xav, it is advisable to use ProcessBuilder instead:
-        String[] args = new String[] {"/bin/bash", "-c", "your_command", "with", "args"};
-        Process proc = new ProcessBuilder(args).start();
-         */
+        // copied exactly from updateTaskName()
+        System.out.println("Task link to open:");
+        try {
+            int openLinkPos = Integer.parseInt(scanner.nextLine()) - 1;
+            if (openLinkPos < 0 || openLinkPos > tasks.size()) {
+                throw new IllegalArgumentException();
+            }
+            URI link = tasks.get(openLinkPos).getLinkUrl();
+            String[] command = { "open", link.toString() };
+            new ProcessBuilder(command).start();
+        } catch (IllegalArgumentException e) {
+            System.out.println("Not a valid entry. Try again.");
+            openLinkDialogue();
+        } catch (IOException e) {
+            System.out.println("Can't execute link open.");
+            openLinkDialogue();
+        }
     }
 
     private void addLinkDialogue() {
-        // TODO working on this. Need to gather link String ,.,,
-        System.out.println("Add link to which task: ");
-        int taskToAddLinkIndex = 0;
+        // copied exactly from updateTaskName()
+        System.out.println("Task to link:");
         try {
-            taskToAddLinkIndex = Integer.parseInt(scanner.nextLine()) - 1;
-            if (taskToAddLinkIndex < 0) {
-                return;
-            } else if (taskToAddLinkIndex > tasks.size()) {
+            int addLinkPos = Integer.parseInt(scanner.nextLine()) - 1;
+            if (addLinkPos < 0 || addLinkPos > tasks.size()) {
                 throw new IllegalArgumentException();
             }
+            System.out.println("Link URL:");
+            tasks.get(addLinkPos).setLinkUrl(new URI(scanner.nextLine().strip()));
         } catch (IllegalArgumentException e) {
-            System.out.println("Invalid entry. Try again.");
-            removeItemDialogue();
-            return;
+            System.out.println("Not a valid entry. Try again.");
+            addLinkDialogue();
+        } catch (URISyntaxException e) {
+            System.out.println("Not valid URI syntax. Try again.");
+            addLinkDialogue();
         }
-        tasks.get(taskToAddLinkIndex).setLinkUrl("www.letsrun.com"); // TODO make dynamic
     }
 
 
@@ -426,7 +441,7 @@ public class Todo {
 
     private static class Task {
 
-        public Task(String name, Boolean completeStatus, String linkUrl) {
+        public Task(String name, Boolean completeStatus, URI linkUrl) {
             setName(name);
             setStatus(completeStatus);
             setLinkUrl(linkUrl);
@@ -434,7 +449,7 @@ public class Todo {
 
         private String name;
         private Boolean status;
-        private String linkUrl;
+        private URI linkUrl = null;
 
         public String getName() {
             return name;
@@ -452,11 +467,11 @@ public class Todo {
             this.status = newStatus;
         }
 
-        public String getLinkUrl() {
+        public URI getLinkUrl() {
             return linkUrl;
         }
 
-        public void setLinkUrl(String newStatus) {
+        public void setLinkUrl(URI linkUrl) {
             this.linkUrl = linkUrl;
         }
 
