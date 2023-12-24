@@ -9,19 +9,22 @@ import java.util.stream.Collectors;
 TODO Features
 - create saved_todos dir if it doesn't exist
 - have sub-tasks
-- undo last action
+- Todo class with sub-tasks
+- hide/show menu
+- Track days since task was created
 
 
 REFACTORS
-- Todo as its own Class with sub tasks, completion status, etc.
 - just one instance of BufferReader?
 - openChosenFile() is pretty ugly
+- Make it DRY-er. Pull out common code from the *Dialogue() methods into one method
 */
 
 
 /*
     NOTE - need to manually set up /saved_todos/todo_titles.txt for this program to work
  */
+
 
 public class Todo {
 
@@ -32,6 +35,12 @@ public class Todo {
     public boolean quit = false;
 
     public void greetingMenu() {
+        String savedTitles = getGreetingMenuTitleString();
+        List<String> todoTitles = Arrays.asList(savedTitles.split("\\s*,\\s*"));
+        printOpeningMenuVisual(todoTitles);
+    }
+
+    public String getGreetingMenuTitleString() {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/todo_titles.txt"));
             StringBuilder stringBuilder = new StringBuilder();
@@ -41,25 +50,25 @@ public class Todo {
                 stringBuilder.append(System.lineSeparator());
                 line = bufferedReader.readLine();
             }
-            String savedTitles = stringBuilder.toString();
-            List<String> todoTitles = Arrays.asList(savedTitles.split("\\s*,\\s*"));
-            printOpeningMenuVisual(todoTitles);
+            return stringBuilder.toString();
         } catch (FileNotFoundException ex) {
             System.out.println("file not found");
         } catch (IOException ex) {
             System.out.println("There was an error and I need to drill down the right exception");
         }
+        return null;
     }
 
     public void printOpeningMenuVisual(List<String> todoTitles) {
         String dashesNeeded = dashesNeeded(todoTitles, false);
         System.out.println(dashesNeeded);
-        formatTaskLines(todoTitles, false).forEach(task -> {
-            System.out.println(task);
+        formatTaskLines(todoTitles, LineTypes.TODO_TITLES).forEach(title -> {
+            System.out.println(title);
             System.out.println(dashesNeeded);
         });
         System.out.println("");
         System.out.println("Which file would you like to open?");
+        System.out.println("Enter anything not here for a new TODO");
         String chosenFileName = null;
         while (chosenFileName == null) {
             chosenFileName = chooseFileToOpen(todoTitles);
@@ -75,12 +84,12 @@ public class Todo {
             }
             return todoTitles.get(openIndex - 1);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
-            System.out.println("Invalid entry. Try again.");
-            return chooseFileToOpen(todoTitles);
+            return "new todo chosen"; // this String can be anyting that isn't already a title of a TODO list
         }
     }
 
     // TODO fix this up. This method is super ugly.
+    // NOTE - if the file is not found, a new Todo session is launched
     public void openChosenFile(String fileName) {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
@@ -114,10 +123,10 @@ public class Todo {
         }
     }
 
+    // Just re-writes the entire file everytime. Doesn't append.
     public void writeToFile() {
         try {
-            String strippedTitle = title.strip().replaceAll("\\s+", "_");
-            FileWriter writer = new FileWriter("./saved_todos/" + strippedTitle + ".txt");
+            FileWriter writer = new FileWriter("./saved_todos/" + title + ".txt");
             BufferedWriter buffWriter = new BufferedWriter(writer);
             StringBuilder taskString = new StringBuilder();
             for (int i = (tasks.size() - 1); i >= 0; i--) {
@@ -134,7 +143,26 @@ public class Todo {
         }
     }
 
-    public void printVisual() {
+    public void changeTitle() {
+        System.out.println("Enter the new title: ");
+        String rawTitle = scanner.nextLine().toUpperCase();
+        title = rawTitle.strip().replaceAll("\\s+", "_");
+
+        // add the title name to the opening menu
+        String titlesString = getGreetingMenuTitleString();
+        titlesString = titlesString + title + ",";
+
+        try {
+            FileWriter writer = new FileWriter("./saved_todos/todo_titles.txt");
+            BufferedWriter buffWriter = new BufferedWriter(writer);
+            buffWriter.write(titlesString);
+            buffWriter.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred writing the todo_titles.txt file.");
+        }
+    }
+
+    public void refreshVisual() {
         // next line clears and resets the text to top of the screen on Linux terminals
         System.out.print("\033[H\033[2J");
         System.out.flush();
@@ -153,22 +181,19 @@ public class Todo {
         String dashesNeeded = dashesNeeded(tasks, true);
         System.out.println("*** " + title + " ***");
         System.out.println(dashesNeeded);
-        formatTaskLines(null, true).forEach(task -> {
+        formatTaskLines(null, LineTypes.TASKS).forEach(task -> {
             System.out.println(task);
             System.out.println(dashesNeeded);
         });
         System.out.println();
     }
 
-    public void changeTitle() {
-        System.out.println("Enter the new title: ");
-        title = scanner.nextLine().toUpperCase();
-    }
-
-    public void addItemDialogue() {
-        System.out.println("Enter the new ToDo item: ");
-        String newItem = scanner.nextLine();
-        if (newItem.equals("cc")) return;
+    public void addTaskDialogue(String newItem) {
+        if (newItem == null) {
+            System.out.println("Enter the new ToDo item: ");
+            newItem = scanner.nextLine();
+            if (newItem.equals("cc")) return;
+        }
         System.out.println("Position of the new item: ");
         int newPosition = 0;
         try {
@@ -180,14 +205,15 @@ public class Todo {
         addTask(newItem, false, newPosition);
     }
 
-    public void addTask(String name, boolean status, Integer newPosition) {
+    public void addTask(String name, boolean completeStatus, Integer newPosition) {
         if (newPosition == null) {
             newPosition = 0;
         }
-        tasks.add(newPosition, new Task(name, status));
+        tasks.add(newPosition, new Task(name, completeStatus, null));
     }
 
-    public List<String> formatTaskLines(List<String> listToFormat, boolean statusNeeded) {
+    public List<String> formatTaskLines(List<String> listToFormat, LineTypes lineTypeNeeded) {
+        // NOTE - passing in null listToFormat just uses the in-memory tasks Object
         if (listToFormat == null) {
             listToFormat = tasks.stream()
                     .map(Task::getName)
@@ -201,12 +227,14 @@ public class Todo {
         for (int i = 0; i < listToFormat.size(); i++) {
             // once the task count gets past 10 (double digits), the row gets wider
             String tenSpace = i < 9 && listToFormat.size() > 9 ? " " : "";
-            String status = "|   ";
-            if (statusNeeded) {
-                status = tasks.get(i).status ? "x" : " ";
-                status = "| " + (i + 1) + tenSpace + " | " + status + " | ";
+            String prePendTask = "";
+            if (lineTypeNeeded.equals(LineTypes.TASKS)) {
+                String status = tasks.get(i).status ? "x" : " ";
+                prePendTask = "| " + (i + 1) + tenSpace + " | " + status + " | ";
+            } else if (lineTypeNeeded.equals(LineTypes.TODO_TITLES)) {
+                prePendTask = "| " + (i + 1) + tenSpace + ": ";
             }
-            formattedLines.add(status + listToFormat.get(i) + generateWhiteSpaceEnd(longest, listToFormat.get(i).length()) + "|");
+            formattedLines.add(prePendTask + listToFormat.get(i) + generateWhiteSpaceEnd(longest, listToFormat.get(i).length()) + "|");
         }
         return formattedLines;
     }
@@ -238,13 +266,6 @@ public class Todo {
         tasks.remove(removeIndex);
     }
 
-    public void populatePt() {
-        List<String> ptList = List.of("90 90 back stretches", "heel raises", "ice", "scraping", "hip tilt things", "one legged squats", "heel raises", "90 90 back stretches", "ice");
-        ptList.forEach(itemName -> {
-            tasks.add(new Task(itemName, false));
-        });
-    }
-
     public void toggleComplete() {
         System.out.println("Task to mark complete");
         int togglePosition = 0;
@@ -260,7 +281,7 @@ public class Todo {
         }
     }
 
-    public void moveTask() {
+    public void moveTaskDialogue() {
         System.out.println("Which task do you want to move?");
         try {
             int fromPosition = Integer.parseInt(scanner.nextLine()) - 1;
@@ -288,7 +309,7 @@ public class Todo {
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
-            moveTask();
+            moveTaskDialogue();
         }
     }
 
@@ -332,36 +353,71 @@ public class Todo {
         return "-".repeat(dashesNeeded);
     }
 
+    private void undoLastDeleted() {
+        addTask(recentlyDeleted.get(0).getName(), false, 0);
+    }
+
+    private void openLinkDialogue() {
+
+        /*
+        Runtime.getRuntime().exec("/bin/bash -c your_command");
+
+        Update: As suggested by xav, it is advisable to use ProcessBuilder instead:
+        String[] args = new String[] {"/bin/bash", "-c", "your_command", "with", "args"};
+        Process proc = new ProcessBuilder(args).start();
+         */
+    }
+
+    private void addLinkDialogue() {
+        // TODO working on this. Need to gather link String ,.,,
+        System.out.println("Add link to which task: ");
+        int taskToAddLinkIndex = 0;
+        try {
+            taskToAddLinkIndex = Integer.parseInt(scanner.nextLine()) - 1;
+            if (taskToAddLinkIndex < 0) {
+                return;
+            } else if (taskToAddLinkIndex > tasks.size()) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid entry. Try again.");
+            removeItemDialogue();
+            return;
+        }
+        tasks.get(taskToAddLinkIndex).setLinkUrl("www.letsrun.com"); // TODO make dynamic
+    }
+
 
     public void requestNextAction(boolean showFullMenu) {
         if (showFullMenu) {
-            System.out.println("a  = add task       c  = toggle complete");
-            System.out.println("r  = remove task    m  = move task");
-            System.out.println("t  = change title   u  = update task name");
-            System.out.println("pt = populate PT    sd = show recently deleted");
-            System.out.println("x  = exit ToDo      cc or < 0 to cancel any action");
+            System.out.println("c= complete     m= move task       u= update");
+            System.out.println("ol= open link   al= add link");
+            System.out.println("d= delete       sd= show deleted   ud= undo deleted");
+            System.out.println("rf = refresh visual    t= change title    ");
+            System.out.println("x  = exit ToDo         cc or < 0 to cancel action");
             System.out.println("   ");
-            System.out.println("What would you like to do next?:  ");
+            System.out.println("Enter next task or command:  ");
         }
 
         String nextAction = scanner.nextLine();
+        nextAction.strip();
         boolean showDeleted = false;
         switch (nextAction) {
-            case "x" -> quit = true;
-            case "a" -> addItemDialogue();
-            case "r" -> removeItemDialogue();
+            case "a" -> addTaskDialogue(null);
+            case "al" -> addLinkDialogue();
             case "c" -> toggleComplete();
-            case "m" -> moveTask();
+            case "d" -> removeItemDialogue();
+            case "m" -> moveTaskDialogue();
             case "t" -> changeTitle();
-            case "u" -> updateTaskName();
-            case "pt" -> populatePt();
+            case "ol" -> openLinkDialogue();
+            case "rf" -> refreshVisual();
             case "sd" -> showDeleted = true;
-            default -> {
-                System.out.println("Not a valid choice");
-                requestNextAction(false); // this causes an extra printVisual() because there is no return but a return would recall requestNextAction(true)
-            }
+            case "u" -> updateTaskName();
+            case "ud" -> undoLastDeleted();
+            case "x" -> quit = true;
+            default -> addTaskDialogue(nextAction);
         }
-        printVisual();
+        refreshVisual();
         writeToFile();
         if (showDeleted) {
             showRecentlyDeleted();
@@ -370,13 +426,15 @@ public class Todo {
 
     private static class Task {
 
-        public Task(String name, Boolean status) {
+        public Task(String name, Boolean completeStatus, String linkUrl) {
             setName(name);
-            setStatus(status);
+            setStatus(completeStatus);
+            setLinkUrl(linkUrl);
         }
 
         private String name;
         private Boolean status;
+        private String linkUrl;
 
         public String getName() {
             return name;
@@ -394,6 +452,19 @@ public class Todo {
             this.status = newStatus;
         }
 
+        public String getLinkUrl() {
+            return linkUrl;
+        }
+
+        public void setLinkUrl(String newStatus) {
+            this.linkUrl = linkUrl;
+        }
+
+    }
+
+    private enum LineTypes {
+        TASKS,
+        TODO_TITLES
     }
 
 }

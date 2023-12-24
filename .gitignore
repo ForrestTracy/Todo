@@ -6,4 +6,5 @@ todo.iml
 .gitignore.swp
 .idea/
 .gitignore~
+Todo$LineTypes.class
 Todo$Task.class
