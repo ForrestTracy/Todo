@@ -4,7 +4,7 @@ public class TodoDriver {
         Todo todo = new Todo();
         System.out.println("    ");
         todo.greetingMenu();
-//        todo.printOpeningMenuVisual();
+        todo.refreshVisual();
         while (!todo.quit) {
             todo.requestNextAction(true);
         }

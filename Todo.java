@@ -2,6 +2,9 @@ import java.awt.*;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.List;
@@ -11,7 +14,6 @@ import java.util.stream.Collectors;
 /*
 TODO Features
 - for links -> save them and show an (L) at the end for linked Task Objects
-- create saved_todos dir if it doesn't exist
 - have sub-tasks
 - Todo class with sub-tasks
 - hide/show menu
@@ -46,6 +48,7 @@ public class Todo {
 
     public String getGreetingMenuTitleString() {
         try {
+            createSaveDirStructure();
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/todo_titles.txt"));
             StringBuilder stringBuilder = new StringBuilder();
             String line = bufferedReader.readLine();
@@ -61,6 +64,15 @@ public class Todo {
             System.out.println("There was an error and I need to drill down the right exception");
         }
         return null;
+    }
+
+    private void createSaveDirStructure() {
+        try {
+            Files.createDirectory(Paths.get("./saved_todos"));
+            new File("./saved_todos/todo_titles.txt").createNewFile();
+        } catch (IOException ex) {
+            System.out.println("Error creating the directory and file. It may already exist.");
+        }
     }
 
     public void printOpeningMenuVisual(List<String> todoTitles) {
@@ -352,7 +364,8 @@ public class Todo {
         int dashesNeeded = referenceList.stream()
                 .map(referenceItem -> (String) referenceItem)
                 .map(String::length)
-                .max(Integer::compare).orElse(1) + 12; // extra needed for (L) link 
+                .max(Integer::compare).orElse(1)
+                + 12; // extra needed for (L) link
 
         if (containsTasks) { dashesNeeded += 6; }
         if (referenceList.size() >= 10) { dashesNeeded += 1; }
