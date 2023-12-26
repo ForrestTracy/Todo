@@ -1,36 +1,28 @@
-import java.awt.*;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /*
 TODO Features
-- for links -> save them and show an (L) at the end for linked Task Objects
+- save links on writeToFile() & openChosenFile()
 - have sub-tasks
-- Todo class with sub-tasks
 - hide/show menu
 - Track days since task was created
 
 
-REFACTORS
+TODO REFACTORS
 - just one instance of BufferReader?
 - openChosenFile() is pretty ugly
 - Make it DRY-er. Pull out common code from the *Dialogue() methods into one method
 */
-
-
-/*
-    NOTE - need to manually set up /saved_todos/todo_titles.txt for this program to work
- */
-
 
 public class Todo {
 
@@ -104,40 +96,61 @@ public class Todo {
         }
     }
 
-    // TODO fix this up. This method is super ugly.
     // NOTE - if the file is not found, a new Todo session is launched
     public void openChosenFile(String fileName) {
+        title = fileName; // shown title match the name of the chosen file
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
             StringBuilder stringBuilder = new StringBuilder();
             String savedInfoOnFirstLine = bufferedReader.readLine(); // just need to read the first line
             stringBuilder.append(savedInfoOnFirstLine);
             String rawSavedTasks = stringBuilder.toString();
-            String workingString = "";
-            String lastStatus = "";
-            String taskOrStatus = "TASK";
-            title = fileName;
-            for (int i = 0; i < rawSavedTasks.length(); i++) {
-                if (rawSavedTasks.charAt(i) == ',') {
-                    if (taskOrStatus.equals("TASK")) {
-                        taskOrStatus = "STATUS";
-                        lastStatus = workingString;
-                    } else {
-                        taskOrStatus = "TASK";
-                        addTask(lastStatus, Boolean.valueOf(workingString), tasks.size());
-                        lastStatus = "";
-                    }
-                    workingString = "";
-                } else {
-                    workingString += rawSavedTasks.charAt(i);
-                }
-            }
+            List<String> rawTodosList = Arrays.asList(rawSavedTasks.split(Pattern.quote("|||")));
+            // <name> ++ <status> ++ <linkUrl> |||
+            rawTodosList.forEach( rawTodo -> {
+                List<String> rawTodoElements = Arrays.asList(rawTodo.split(Pattern.quote("++")));
+                addTask(rawTodoElements.get(0), Boolean.parseBoolean(rawTodoElements.get(1)), rawTodoElements.get(2), tasks.size());
+            });
         } catch (FileNotFoundException ex) {
             System.out.println("Caught error in openChosenFile() " + ex);
         } catch (IOException ex) {
             System.out.println("There was an error in openChosenFile() and I need to drill down the right exception");
         }
     }
+//    // TODO fix this up. This method is super ugly.
+//    // NOTE - if the file is not found, a new Todo session is launched
+//    public void openChosenFile(String fileName) {
+//        try {
+//            BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
+//            StringBuilder stringBuilder = new StringBuilder();
+//            String savedInfoOnFirstLine = bufferedReader.readLine(); // just need to read the first line
+//            stringBuilder.append(savedInfoOnFirstLine);
+//            String rawSavedTasks = stringBuilder.toString();
+//            String workingString = "";
+//            String lastStatus = "";
+//            String taskOrStatus = "TASK";
+//            title = fileName;
+//            for (int i = 0; i < rawSavedTasks.length(); i++) {
+//                if (rawSavedTasks.charAt(i) == ',') {
+//                    if (taskOrStatus.equals("TASK")) {
+//                        taskOrStatus = "STATUS";
+//                        lastStatus = workingString;
+//                    } else {
+//                        taskOrStatus = "TASK";
+//                        addTask(lastStatus, Boolean.valueOf(workingString), tasks.size());
+//                        lastStatus = "";
+//                    }
+//                    workingString = "";
+//                } else {
+//                    workingString += rawSavedTasks.charAt(i);
+//                }
+//            }
+//        } catch (FileNotFoundException ex) {
+//            System.out.println("Caught error in openChosenFile() " + ex);
+//        } catch (IOException ex) {
+//            System.out.println("There was an error in openChosenFile() and I need to drill down the right exception");
+//        }
+//    }
 
     // Just re-writes the entire file everytime. Doesn't append.
     public void writeToFile() {
@@ -146,7 +159,9 @@ public class Todo {
             BufferedWriter buffWriter = new BufferedWriter(writer);
             StringBuilder taskString = new StringBuilder();
             for (int i = (tasks.size() - 1); i >= 0; i--) {
-                taskString.insert(0, tasks.get(i).name + "," + tasks.get(i).status.toString() + ",");
+                //   <name> ++ <status> ++ <linkUrl> |||
+                String urlString = tasks.get(i).getLinkUrl() == null ? "null" : tasks.get(i).getLinkUrl().toString();
+                taskString.insert(0, tasks.get(i).name + "++" + tasks.get(i).status.toString() + "++" + urlString + "|||");
             }
             buffWriter.write(taskString.toString());
             for (Task deletedTask : recentlyDeleted) {
@@ -218,14 +233,16 @@ public class Todo {
             // do nothing. Leave it at index 0
         }
         if (newPosition < 0 || newPosition > tasks.size()) newPosition = tasks.size();
-        addTask(newItem, false, newPosition);
+        addTask(newItem, false, null, newPosition);
     }
 
-    public void addTask(String name, boolean completeStatus, Integer newPosition) {
-        if (newPosition == null) {
-            newPosition = 0;
-        }
-        tasks.add(newPosition, new Task(name, completeStatus, null));
+    public void addTask(String name, boolean completeStatus, String linkUrl, Integer newPosition) {
+        if (newPosition == null) { newPosition = 0; }
+        URI uri = null;
+        try {
+            uri = linkUrl.equals("null") ? null : new URI(linkUrl);
+        } catch (URISyntaxException ex) {  } // do nothing
+        tasks.add(newPosition, new Task(name, completeStatus, uri));
     }
 
     public List<String> formatTaskLines(List<String> listToFormat, LineTypes lineTypeNeeded) {
@@ -319,11 +336,11 @@ public class Todo {
             if (fromPosition == newPosition) {
                 return;
             } else if (fromPosition < newPosition) {
-                addTask(task.getName(), task.getStatus(), newPosition + 1);
+                addTask(task.getName(), task.getStatus(), null, newPosition + 1);
                 removeItem(fromPosition);
             } else {
                 removeItem(fromPosition);
-                addTask(task.getName(), task.getStatus(), newPosition);
+                addTask(task.getName(), task.getStatus(), null, newPosition);
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
@@ -373,7 +390,7 @@ public class Todo {
     }
 
     private void undoLastDeleted() {
-        addTask(recentlyDeleted.get(0).getName(), false, 0);
+        addTask(recentlyDeleted.get(0).getName(), false, null, 0);
     }
 
     private void openLinkDialogue() {
