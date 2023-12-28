@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
 
 /*
 TODO Features
-- save links on writeToFile() & openChosenFile()
+- WIP hide/show menu in requestNextAction()
 - have sub-tasks
-- hide/show menu
 - Track days since task was created
+- remove TODO lists from printOpeningMenuVisual
 
 
 TODO REFACTORS
@@ -31,6 +31,7 @@ public class Todo {
     private static String title = "Default Title";
     private static Scanner scanner = new Scanner(System.in);
     public boolean quit = false;
+    public boolean showFullMenu = true;
 
     public void greetingMenu() {
         String savedTitles = getGreetingMenuTitleString();
@@ -92,21 +93,18 @@ public class Todo {
             }
             return todoTitles.get(openIndex - 1);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
-            return "new todo chosen"; // this String can be anything that isn't already a title of a TODO list
+            return "new todo"; // this String can be anything that isn't already a title of a TODO list
         }
     }
 
     // NOTE - if the file is not found, a new Todo session is launched
     public void openChosenFile(String fileName) {
-        title = fileName; // shown title match the name of the chosen file
+        title = fileName; // displayed title match the name of the chosen file
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
-            StringBuilder stringBuilder = new StringBuilder();
-            String savedInfoOnFirstLine = bufferedReader.readLine(); // just need to read the first line
-            stringBuilder.append(savedInfoOnFirstLine);
-            String rawSavedTasks = stringBuilder.toString();
+            String rawSavedTasks = bufferedReader.readLine(); // just need to read the first line
             List<String> rawTodosList = Arrays.asList(rawSavedTasks.split(Pattern.quote("|||")));
-            // <name> ++ <status> ++ <linkUrl> |||
+            // FORMAT =>    <name> ++ <status> ++ <linkUrl> |||
             rawTodosList.forEach( rawTodo -> {
                 List<String> rawTodoElements = Arrays.asList(rawTodo.split(Pattern.quote("++")));
                 addTask(rawTodoElements.get(0), Boolean.parseBoolean(rawTodoElements.get(1)), rawTodoElements.get(2), tasks.size());
@@ -117,40 +115,6 @@ public class Todo {
             System.out.println("There was an error in openChosenFile() and I need to drill down the right exception");
         }
     }
-//    // TODO fix this up. This method is super ugly.
-//    // NOTE - if the file is not found, a new Todo session is launched
-//    public void openChosenFile(String fileName) {
-//        try {
-//            BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
-//            StringBuilder stringBuilder = new StringBuilder();
-//            String savedInfoOnFirstLine = bufferedReader.readLine(); // just need to read the first line
-//            stringBuilder.append(savedInfoOnFirstLine);
-//            String rawSavedTasks = stringBuilder.toString();
-//            String workingString = "";
-//            String lastStatus = "";
-//            String taskOrStatus = "TASK";
-//            title = fileName;
-//            for (int i = 0; i < rawSavedTasks.length(); i++) {
-//                if (rawSavedTasks.charAt(i) == ',') {
-//                    if (taskOrStatus.equals("TASK")) {
-//                        taskOrStatus = "STATUS";
-//                        lastStatus = workingString;
-//                    } else {
-//                        taskOrStatus = "TASK";
-//                        addTask(lastStatus, Boolean.valueOf(workingString), tasks.size());
-//                        lastStatus = "";
-//                    }
-//                    workingString = "";
-//                } else {
-//                    workingString += rawSavedTasks.charAt(i);
-//                }
-//            }
-//        } catch (FileNotFoundException ex) {
-//            System.out.println("Caught error in openChosenFile() " + ex);
-//        } catch (IOException ex) {
-//            System.out.println("There was an error in openChosenFile() and I need to drill down the right exception");
-//        }
-//    }
 
     // Just re-writes the entire file everytime. Doesn't append.
     public void writeToFile() {
@@ -188,6 +152,7 @@ public class Todo {
             BufferedWriter buffWriter = new BufferedWriter(writer);
             buffWriter.write(titlesString);
             buffWriter.close();
+            writeToFile();
         } catch (IOException e) {
             System.out.println("An error occurred writing the todo_titles.txt file.");
         }
@@ -240,11 +205,12 @@ public class Todo {
         if (newPosition == null) { newPosition = 0; }
         URI uri = null;
         try {
-            uri = linkUrl.equals("null") ? null : new URI(linkUrl);
+            uri = linkUrl == null || linkUrl.equals("null") ? null : new URI(linkUrl);
         } catch (URISyntaxException ex) {  } // do nothing
         tasks.add(newPosition, new Task(name, completeStatus, uri));
     }
 
+    // TODO This method is ugly, but works. Make it cleaner.
     public List<String> formatTaskLines(List<String> listToFormat, LineTypes lineTypeNeeded) {
         // NOTE - passing in null listToFormat just uses the in-memory tasks Object
         if (listToFormat == null) {
@@ -433,8 +399,9 @@ public class Todo {
     }
 
 
-    public void requestNextAction(boolean showFullMenu) {
+    public void requestNextAction() {
         if (showFullMenu) {
+            showFullMenu = false;
             System.out.println("c= complete     m= move task       u= update");
             System.out.println("ol= open link   al= add link");
             System.out.println("d= delete       sd= show deleted   ud= undo deleted");
@@ -442,6 +409,8 @@ public class Todo {
             System.out.println("x  = exit ToDo         cc or < 0 to cancel action");
             System.out.println("   ");
             System.out.println("Enter next task or command:  ");
+        } else {
+            System.out.println("(cmd) show commands  >>");
         }
 
         String nextAction = scanner.nextLine();
@@ -452,6 +421,7 @@ public class Todo {
             case "al" -> addLinkDialogue();
             case "c" -> toggleComplete();
             case "d" -> removeItemDialogue();
+            case "em" -> showFullMenu = true;
             case "m" -> moveTaskDialogue();
             case "t" -> changeTitle();
             case "ol" -> openLinkDialogue();

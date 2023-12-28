@@ -6,7 +6,7 @@ public class TodoDriver {
         todo.greetingMenu();
         todo.refreshVisual();
         while (!todo.quit) {
-            todo.requestNextAction(true);
+            todo.requestNextAction();
         }
     }
 }
