@@ -12,10 +12,15 @@ import java.util.stream.Collectors;
 
 /*
 TODO Features
-- WIP hide/show menu in requestNextAction()
+- WIP Shortcut commands "d1" in stead of "delete enter 1"
+    - This needs refactoring of the methods it would call
+    pull out dialogue, validation of todos index chosen, and execution of action
+    currently, they're all in one method
+- fix bug where moving task to bottom throw OOB ex
+- sort completed tasks to bottom
 - have sub-tasks
 - Track days since task was created
-- remove TODO lists from printOpeningMenuVisual
+- ability to remove a TODO list from printOpeningMenuVisual
 
 
 TODO REFACTORS
@@ -31,7 +36,7 @@ public class Todo {
     private static String title = "Default Title";
     private static Scanner scanner = new Scanner(System.in);
     public boolean quit = false;
-    public boolean showFullMenu = true;
+    public boolean showFullMenu = false;
 
     public void greetingMenu() {
         String savedTitles = getGreetingMenuTitleString();
@@ -115,6 +120,20 @@ public class Todo {
             System.out.println("There was an error in openChosenFile() and I need to drill down the right exception");
         }
     }
+
+    /*
+    < END    OPENING DIALOGUE  >
+    < BEGIN  VALIDATIONS       >
+     */
+
+    private boolean isValidChosenTaskIndex(Integer requestedIndex) {
+        if (requestedIndex == null) { return false; }
+        return requestedIndex >= 0 && requestedIndex <= tasks.size();
+    }
+
+    /*
+    <END   VALIDATIONS  >
+     */
 
     // Just re-writes the entire file everytime. Doesn't append.
     public void writeToFile() {
@@ -267,19 +286,25 @@ public class Todo {
         tasks.remove(removeIndex);
     }
 
-    public void toggleComplete() {
-        System.out.println("Task to mark complete");
-        int togglePosition = 0;
-        try {
-            togglePosition = Integer.parseInt(scanner.nextLine()) - 1;
-            if (togglePosition < 0 || togglePosition > tasks.size()) {
-                throw new IllegalArgumentException();
-            }
-            tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getStatus());
-        } catch (IllegalArgumentException e) {
-            System.out.println("Not a valid entry. Try again.");
-            toggleComplete();
+    public void toggleComplete(Integer togglePosition) {
+        String strTogglePosition = null;
+        if (togglePosition == null) {
+            System.out.println("Task to mark complete");
+            strTogglePosition = scanner.nextLine();
         }
+        try {
+            if (strTogglePosition != null) {
+                togglePosition = Integer.parseInt(strTogglePosition) -1;
+            }
+            if (!isValidChosenTaskIndex(togglePosition)) {
+                throw new NumberFormatException();
+            }
+        } catch (NumberFormatException ex) {
+            System.out.println("Not a valid entry. Try again.");
+            toggleComplete(null);
+            return;
+        }
+        tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getStatus());
     }
 
     public void moveTaskDialogue() {
@@ -398,8 +423,7 @@ public class Todo {
         }
     }
 
-
-    public void requestNextAction() {
+    private void displayCommandMenu() {
         if (showFullMenu) {
             showFullMenu = false;
             System.out.println("c= complete     m= move task       u= update");
@@ -412,16 +436,56 @@ public class Todo {
         } else {
             System.out.println("(cmd) show commands  >>");
         }
+    }
 
-        String nextAction = scanner.nextLine();
-        nextAction.strip();
+    private boolean shortCutExecuted(String nextAction) {
+        if (nextAction.length() > 4 || nextAction.length() < 2) { // max 2 char shortcut command and 99 todos List length
+            return false;
+        }
+        String firstLetter = nextAction.substring(0,1);
+        String firstTwoLetters = nextAction.substring(0,2);
+        Integer indexForOneLetterCommand = null;
+        Integer indexForTwoLetterCommand = null;
+
+        // NOTE ** reduce all commands by 1 because display is 1-indexed but List is 0-indexed
+        try { indexForOneLetterCommand = Integer.parseInt(nextAction.substring(1)) - 1;
+        } catch (NumberFormatException ignored) { } // do nothing. Leave as null
+
+        try { indexForTwoLetterCommand = Integer.parseInt(nextAction.substring(2)) - 1;
+        } catch (NumberFormatException | IndexOutOfBoundsException ignored) { } // do nothing. Leave as null
+
+        if (firstLetter.equals("c") && indexForOneLetterCommand != null) {
+            toggleComplete(indexForOneLetterCommand);
+            return true;
+        } else if (firstLetter.equals("d") && indexForOneLetterCommand != null) {
+            // delete task
+            return true;
+        } else if (firstLetter.equals("m") && indexForOneLetterCommand != null) {
+            // move task
+            return true;
+        } else if (firstLetter.equals("u") && indexForOneLetterCommand != null) {
+            // update task
+            return true;
+        } else if (firstTwoLetters.equals("ol") && indexForTwoLetterCommand != null) {
+            // open link for task
+            return true;
+        }
+
+        return false;
+    }
+
+    public void requestNextAction() {
+        displayCommandMenu();
+        String nextAction = scanner.nextLine().strip();
+        nextAction = shortCutExecuted(nextAction) ? "shortCut" : nextAction;
         boolean showDeleted = false;
         switch (nextAction) {
+            case "shortCut" -> {}
             case "a" -> addTaskDialogue(null);
             case "al" -> addLinkDialogue();
-            case "c" -> toggleComplete();
+            case "c" -> toggleComplete(null);
+            case "cmd" -> showFullMenu = true;
             case "d" -> removeItemDialogue();
-            case "em" -> showFullMenu = true;
             case "m" -> moveTaskDialogue();
             case "t" -> changeTitle();
             case "ol" -> openLinkDialogue();
@@ -434,9 +498,7 @@ public class Todo {
         }
         refreshVisual();
         writeToFile();
-        if (showDeleted) {
-            showRecentlyDeleted();
-        }
+        if (showDeleted) { showRecentlyDeleted(); }
     }
 
     private static class Task {
