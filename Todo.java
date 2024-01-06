@@ -263,25 +263,28 @@ public class Todo {
         return " ".repeat(longest - current + 2);
     }
 
-    public void removeItemDialogue() {
-        System.out.println("Task to remove: ");
-        int removeIndex = 0;
+    public void deleteItemDialogue(Integer removePosition) {
+        String strRemovePosition = null;
+        if (removePosition == null) {
+            System.out.println("Task to remove: ");
+            strRemovePosition = scanner.nextLine();
+        }
         try {
-            removeIndex = Integer.parseInt(scanner.nextLine()) - 1;
-            if (removeIndex < 0) {
-                return;
-            } else if (removeIndex > tasks.size()) {
-                throw new IllegalArgumentException();
+            if (strRemovePosition != null) {
+                removePosition = Integer.parseInt(strRemovePosition) -1;
             }
-        } catch (IllegalArgumentException e) {
-            System.out.println("Invalid entry. Try again.");
-            removeItemDialogue();
+            if (!isValidChosenTaskIndex(removePosition)) {
+                throw new NumberFormatException();
+            }
+        } catch (NumberFormatException ex) {
+            System.out.println("Not a valid entry. Try again.");
+            deleteItemDialogue(null);
             return;
         }
-        removeItem(removeIndex);
+        deleteItem(removePosition);
     }
 
-    public void removeItem(int removeIndex) {
+    public void deleteItem(int removeIndex) {
         recentlyDeleted.add(0, tasks.get(removeIndex));
         tasks.remove(removeIndex);
     }
@@ -328,9 +331,9 @@ public class Todo {
                 return;
             } else if (fromPosition < newPosition) {
                 addTask(task.getName(), task.getStatus(), null, newPosition + 1);
-                removeItem(fromPosition);
+                deleteItem(fromPosition);
             } else {
-                removeItem(fromPosition);
+                deleteItem(fromPosition);
                 addTask(task.getName(), task.getStatus(), null, newPosition);
             }
         } catch (IllegalArgumentException e) {
@@ -458,10 +461,7 @@ public class Todo {
             toggleComplete(indexForOneLetterCommand);
             return true;
         } else if (firstLetter.equals("d") && indexForOneLetterCommand != null) {
-            // delete task
-            return true;
-        } else if (firstLetter.equals("m") && indexForOneLetterCommand != null) {
-            // move task
+            deleteItemDialogue(indexForOneLetterCommand);
             return true;
         } else if (firstLetter.equals("u") && indexForOneLetterCommand != null) {
             // update task
@@ -485,7 +485,7 @@ public class Todo {
             case "al" -> addLinkDialogue();
             case "c" -> toggleComplete(null);
             case "cmd" -> showFullMenu = true;
-            case "d" -> removeItemDialogue();
+            case "d" -> deleteItemDialogue(null);
             case "m" -> moveTaskDialogue();
             case "t" -> changeTitle();
             case "ol" -> openLinkDialogue();
