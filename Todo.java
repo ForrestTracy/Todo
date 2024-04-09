@@ -21,7 +21,6 @@ TODO Features
     - This needs refactoring of the methods it would call
     pull out dialogue, validation of todos index chosen, and execution of action
     currently, they're all in one method
-- fix bug where moving task to bottom throw OOB ex
 - sort completed tasks to bottom
 - have sub-tasks
 - Track days since task was created
@@ -32,6 +31,7 @@ TODO REFACTORS
 - just one instance of BufferReader?
 - openChosenFile() is pretty ugly
 - Make it DRY-er. Pull out common code from the *Dialogue() methods into one method
+- Unify validations
 */
 
 public class Todo {
