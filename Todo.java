@@ -11,6 +11,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /*
+
+TODO Known Bugs
+- 
+
+
 TODO Features
 - WIP Shortcut commands "d1" in stead of "delete enter 1"
     - This needs refactoring of the methods it would call
@@ -142,15 +147,11 @@ public class Todo {
             BufferedWriter buffWriter = new BufferedWriter(writer);
             StringBuilder taskString = new StringBuilder();
             for (int i = (tasks.size() - 1); i >= 0; i--) {
-                //   <name> ++ <status> ++ <linkUrl> |||
+                // format =   <name> ++ <status> ++ <linkUrl> |||
                 String urlString = tasks.get(i).getLinkUrl() == null ? "null" : tasks.get(i).getLinkUrl().toString();
                 taskString.insert(0, tasks.get(i).name + "++" + tasks.get(i).status.toString() + "++" + urlString + "|||");
             }
             buffWriter.write(taskString.toString());
-            for (Task deletedTask : recentlyDeleted) {
-                buffWriter.write(deletedTask.getName());
-                buffWriter.newLine();
-            }
             buffWriter.close();
         } catch (IOException e) {
             System.out.println("An error occurred writing the file.");
@@ -316,15 +317,15 @@ public class Todo {
             int fromPosition = Integer.parseInt(scanner.nextLine()) - 1;
             if (fromPosition < 0) {
                 return;
-            } else if (fromPosition > tasks.size()) {
+            } else if (fromPosition >= tasks.size()) {
                 throw new IllegalArgumentException();
             }
             System.out.println("New placement?");
             int newPosition = Integer.parseInt(scanner.nextLine()) - 1;
             if (newPosition < 0) {
                 return;
-            } else if (newPosition > tasks.size()) {
-                throw new IllegalArgumentException();
+            } else if (newPosition >= tasks.size()) {
+                newPosition = tasks.size() - 1;
             }
             Task task = tasks.get(fromPosition);
             if (fromPosition == newPosition) {
@@ -429,9 +430,9 @@ public class Todo {
     private void displayCommandMenu() {
         if (showFullMenu) {
             showFullMenu = false;
-            System.out.println("c= complete     m= move task       u= update");
-            System.out.println("ol= open link   al= add link");
-            System.out.println("d= delete       sd= show deleted   ud= undo deleted");
+            System.out.println("c= complete     m= move task       u= update task");
+            System.out.println("ol= open link   al= add link       ud= undo deleted");
+            System.out.println("d= delete       sd= show deleted");
             System.out.println("rf = refresh visual    t= change title    ");
             System.out.println("x  = exit ToDo         cc or < 0 to cancel action");
             System.out.println("   ");
@@ -464,11 +465,15 @@ public class Todo {
             deleteItemDialogue(indexForOneLetterCommand);
             return true;
         } else if (firstLetter.equals("u") && indexForOneLetterCommand != null) {
+            // todo
             // update task
-            return true;
+            // return true;
+            return false;
         } else if (firstTwoLetters.equals("ol") && indexForTwoLetterCommand != null) {
+            // todo
             // open link for task
-            return true;
+            // return true;
+            return false;
         }
 
         return false;
