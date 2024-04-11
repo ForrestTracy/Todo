@@ -3,10 +3,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Scanner;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -15,14 +12,13 @@ import java.util.stream.Collectors;
 TODO Known Bugs
 -
 
-
 TODO Features
+- sort completed tasks to bottom
+- have sub-tasks
 - WIP Shortcut commands "d1" in stead of "delete enter 1"
     - This needs refactoring of the methods it would call
     pull out dialogue, validation of todos index chosen, and execution of action
     currently, they're all in one method
-- sort completed tasks to bottom
-- have sub-tasks
 - Track days since task was created
 - ability to remove a TODO list from printOpeningMenuVisual
 
@@ -149,7 +145,7 @@ public class Todo {
             for (int i = (tasks.size() - 1); i >= 0; i--) {
                 // format =   <name> ++ <status> ++ <linkUrl> |||
                 String urlString = tasks.get(i).getLinkUrl() == null ? "null" : tasks.get(i).getLinkUrl().toString();
-                taskString.insert(0, tasks.get(i).name + "++" + tasks.get(i).status.toString() + "++" + urlString + "|||");
+                taskString.insert(0, tasks.get(i).name + "++" + tasks.get(i).isComplete.toString() + "++" + urlString + "|||");
             }
             buffWriter.write(taskString.toString());
             buffWriter.close();
@@ -249,7 +245,7 @@ public class Todo {
             String prePendTask = "";
             String postPendLink = "     ";
             if (lineTypeNeeded.equals(LineTypes.TASKS)) {
-                String status = tasks.get(i).status ? "x" : " ";
+                String status = tasks.get(i).isComplete ? "x" : " ";
                 prePendTask = "| " + (i + 1) + tenSpace + " | " + status + " | ";
                 postPendLink = tasks.get(i).getLinkUrl() == null ? "     " : "  (L)";
             } else if (lineTypeNeeded.equals(LineTypes.TODO_TITLES)) {
@@ -308,7 +304,16 @@ public class Todo {
             toggleComplete(null);
             return;
         }
-        tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getStatus());
+        tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getIsComplete());
+    }
+
+    public void moveCompletedTasksToBottom() {
+        for (int i = tasks.size() - 1; i >= 0; i--) {
+            if (tasks.get(i).isComplete) {
+                addTask(tasks.get(i).getName(), tasks.get(i).getIsComplete(), null, tasks.size());
+                tasks.remove(i);
+            }
+        }
     }
 
     public void moveTaskDialogue() {
@@ -331,11 +336,11 @@ public class Todo {
             if (fromPosition == newPosition) {
                 return;
             } else if (fromPosition < newPosition) {
-                addTask(task.getName(), task.getStatus(), null, newPosition + 1);
+                addTask(task.getName(), task.getIsComplete(), null, newPosition + 1);
                 deleteItem(fromPosition);
             } else {
                 deleteItem(fromPosition);
-                addTask(task.getName(), task.getStatus(), null, newPosition);
+                addTask(task.getName(), task.getIsComplete(), null, newPosition);
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
@@ -432,7 +437,7 @@ public class Todo {
             showFullMenu = false;
             System.out.println("c= complete     m= move task       u= update task");
             System.out.println("ol= open link   al= add link       ud= undo deleted");
-            System.out.println("d= delete       sd= show deleted");
+            System.out.println("d= delete       sd= show deleted   cb= completed tasks to bottom");
             System.out.println("rf = refresh visual    t= change title    ");
             System.out.println("x  = exit ToDo         cc or < 0 to cancel action");
             System.out.println("   ");
@@ -489,6 +494,7 @@ public class Todo {
             case "a" -> addTaskDialogue(null);
             case "al" -> addLinkDialogue();
             case "c" -> toggleComplete(null);
+            case "cb" -> moveCompletedTasksToBottom();
             case "cmd" -> showFullMenu = true;
             case "d" -> deleteItemDialogue(null);
             case "m" -> moveTaskDialogue();
@@ -508,14 +514,14 @@ public class Todo {
 
     private static class Task {
 
-        public Task(String name, Boolean completeStatus, URI linkUrl) {
+        public Task(String name, Boolean isComplete, URI linkUrl) {
             setName(name);
-            setStatus(completeStatus);
+            setStatus(isComplete);
             setLinkUrl(linkUrl);
         }
 
         private String name;
-        private Boolean status;
+        private Boolean isComplete;
         private URI linkUrl = null;
 
         public String getName() {
@@ -526,12 +532,12 @@ public class Todo {
             this.name = newName;
         }
 
-        public Boolean getStatus() {
-            return status;
+        public Boolean getIsComplete() {
+            return isComplete;
         }
 
         public void setStatus(Boolean newStatus) {
-            this.status = newStatus;
+            this.isComplete = newStatus;
         }
 
         public URI getLinkUrl() {
