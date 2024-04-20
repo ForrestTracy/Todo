@@ -1,9 +1,13 @@
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -41,6 +45,7 @@ public class Todo {
 
     public void greetingMenu() {
         String savedTitles = getGreetingMenuTitleString();
+        if (savedTitles == null) { savedTitles = "empty,"; }
         List<String> todoTitles = Arrays.asList(savedTitles.split("\\s*,\\s*"));
         printOpeningMenuVisual(todoTitles);
     }
@@ -109,6 +114,7 @@ public class Todo {
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
             String rawSavedTasks = bufferedReader.readLine(); // just need to read the first line
+            if (rawSavedTasks.isBlank()) { return; }
             List<String> rawTodosList = Arrays.asList(rawSavedTasks.split(Pattern.quote("|||")));
             // FORMAT =>    <name> ++ <status> ++ <linkUrl> |||
             rawTodosList.forEach( rawTodo -> {
@@ -432,6 +438,15 @@ public class Todo {
         }
     }
 
+    private void clipboard(String valueToCopy) {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        switch (valueToCopy) {
+            case "p" -> clipboard.setContents(new StringSelection("my password"), null);
+            case "i" -> clipboard.setContents(new StringSelection("my id"), null);
+            case "xx" -> clipboard.setContents(new StringSelection("_"), null);
+        }
+    }
+
     private void displayCommandMenu() {
         if (showFullMenu) {
             showFullMenu = false;
@@ -505,6 +520,7 @@ public class Todo {
             case "u" -> updateTaskName();
             case "ud" -> undoLastDeleted();
             case "x" -> quit = true;
+            case "p", "i", "xx" -> clipboard(nextAction);
             default -> addTaskDialogue(nextAction);
         }
         refreshVisual();
