@@ -8,18 +8,19 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /*
 
 TODO Known Bugs
--
+- Initial launch doesn't work right unless files and directories are Juuuust right. Some bugginess in there.
 
 TODO Features
-- sort completed tasks to bottom
+- DONE!!  --> sort completed tasks to bottom
 - have sub-tasks
-- WIP Shortcut commands "d1" in stead of "delete enter 1"
+- DONE!!  --> WIP Shortcut commands "d1" in stead of "delete enter 1"
     - This needs refactoring of the methods it would call
     pull out dialogue, validation of todos index chosen, and execution of action
     currently, they're all in one method
@@ -104,7 +105,9 @@ public class Todo {
             }
             return todoTitles.get(openIndex - 1);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
-            return "new todo"; // this String can be anything that isn't already a title of a TODO list
+            title = "NEW_UNNAMED_TODO"; // this String can be anything that isn't already a title of a TODO list
+            changeTitle();
+            return title;
         }
     }
 
@@ -113,8 +116,8 @@ public class Todo {
         title = fileName; // displayed title match the name of the chosen file
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("./saved_todos/" + fileName + ".txt"));
-            String rawSavedTasks = bufferedReader.readLine(); // just need to read the first line
-            if (rawSavedTasks.isBlank()) { return; }
+            String rawSavedTasks = bufferedReader.readLine(); // just need to read the first line to check if the file is blank
+            if (rawSavedTasks == null || rawSavedTasks.isBlank()) { return; }
             List<String> rawTodosList = Arrays.asList(rawSavedTasks.split(Pattern.quote("|||")));
             // FORMAT =>    <name> ++ <status> ++ <linkUrl> |||
             rawTodosList.forEach( rawTodo -> {
@@ -159,7 +162,6 @@ public class Todo {
             System.out.println("An error occurred writing the file.");
         }
     }
-
     public void changeTitle() {
         System.out.println("Enter the new title: ");
         String rawTitle = scanner.nextLine().toUpperCase();
@@ -315,8 +317,9 @@ public class Todo {
 
     public void moveCompletedTasksToBottom() {
         for (int i = tasks.size() - 1; i >= 0; i--) {
+            String taskLink = tasks.get(i).getLinkUrl() == null ? null : tasks.get(i).getLinkUrl().toString();
             if (tasks.get(i).isComplete) {
-                addTask(tasks.get(i).getName(), tasks.get(i).getIsComplete(), null, tasks.size());
+                addTask(tasks.get(i).getName(), tasks.get(i).getIsComplete(), taskLink, tasks.size());
                 tasks.remove(i);
             }
         }
@@ -338,15 +341,17 @@ public class Todo {
             } else if (newPosition >= tasks.size()) {
                 newPosition = tasks.size() - 1;
             }
+
             Task task = tasks.get(fromPosition);
+            String taskLink = task.getLinkUrl() == null ? null : task.getLinkUrl().toString();
             if (fromPosition == newPosition) {
                 return;
             } else if (fromPosition < newPosition) {
-                addTask(task.getName(), task.getIsComplete(), null, newPosition + 1);
+                addTask(task.getName(), task.getIsComplete(), taskLink, newPosition + 1);
                 deleteItem(fromPosition);
             } else {
                 deleteItem(fromPosition);
-                addTask(task.getName(), task.getIsComplete(), null, newPosition);
+                addTask(task.getName(), task.getIsComplete(), taskLink, newPosition);
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Not a valid entry. Try again.");
@@ -408,6 +413,10 @@ public class Todo {
                 throw new IllegalArgumentException();
             }
             URI link = tasks.get(openLinkPos).getLinkUrl();
+            if (link == null ) {
+                System.out.println("That task does not have a link.");
+                return;
+            }
             String[] command = { "open", link.toString() };
             new ProcessBuilder(command).start();
         } catch (IllegalArgumentException e) {
@@ -438,15 +447,6 @@ public class Todo {
         }
     }
 
-    private void clipboard(String valueToCopy) {
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        switch (valueToCopy) {
-            case "p" -> clipboard.setContents(new StringSelection("my password"), null);
-            case "i" -> clipboard.setContents(new StringSelection("my id"), null);
-            case "xx" -> clipboard.setContents(new StringSelection("_"), null);
-        }
-    }
-
     private void displayCommandMenu() {
         if (showFullMenu) {
             showFullMenu = false;
@@ -461,6 +461,39 @@ public class Todo {
             System.out.println("(cmd) show commands  >>");
         }
     }
+
+    private void clipboard(String valueToCopy) {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        String pswd = "Techtechpswd!1";
+        switch (valueToCopy) {
+            case "p" -> {
+                try {
+                    clipboard.setContents(new StringSelection(pswd), null);
+                    TimeUnit.SECONDS.sleep(2);
+                    clipboard.setContents(new StringSelection("_"), null);
+                } catch (InterruptedException ex) {
+                    // do nothing
+                }
+            }
+            case "i" -> clipboard.setContents(new StringSelection("a1596924"), null);
+            case "ip" -> {
+                try {
+                    clipboard.setContents(new StringSelection("a1596924"), null);
+                    TimeUnit.SECONDS.sleep(2);
+                    clipboard.setContents(new StringSelection(""), null);
+                    TimeUnit.SECONDS.sleep(1);
+                    System.out.println("---");
+                    clipboard.setContents(new StringSelection(pswd), null);
+                    TimeUnit.SECONDS.sleep(2);
+                    clipboard.setContents(new StringSelection("_"), null);
+                } catch (InterruptedException ex) {
+                    // do nothing
+                }
+            }
+            case "-" -> clipboard.setContents(new StringSelection("_"), null);
+        }
+    }
+
 
     private boolean shortCutExecuted(String nextAction) {
         if (nextAction.length() > 4 || nextAction.length() < 2) { // max 2 char shortcut command and 99 todos List length
@@ -520,7 +553,7 @@ public class Todo {
             case "u" -> updateTaskName();
             case "ud" -> undoLastDeleted();
             case "x" -> quit = true;
-            case "p", "i", "xx" -> clipboard(nextAction);
+            case "i", "p", "-", "ip" -> clipboard(nextAction);
             default -> addTaskDialogue(nextAction);
         }
         refreshVisual();
