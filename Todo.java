@@ -6,6 +6,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -14,17 +18,20 @@ import java.util.stream.Collectors;
 
 /*
 
+ALIAS:
+alias todo="cd /Users/fo/gitRepos/Todo;\
+                javac Todo.java; \
+                javac TodoDriver.java; \
+                java TodoDriver;"
+
+
 TODO Known Bugs
 - Initial launch doesn't work right unless files and directories are Juuuust right. Some bugginess in there.
 
 TODO Features
-- DONE!!  --> sort completed tasks to bottom
 - have sub-tasks
-- DONE!!  --> WIP Shortcut commands "d1" in stead of "delete enter 1"
-    - This needs refactoring of the methods it would call
-    pull out dialogue, validation of todos index chosen, and execution of action
-    currently, they're all in one method
 - Track days since task was created
+    Started getAgeInDays() which references new setCreation date but haven't tested it and can't access it yet from the UI
 - ability to remove a TODO list from printOpeningMenuVisual
 
 
@@ -312,7 +319,7 @@ public class Todo {
             toggleComplete(null);
             return;
         }
-        tasks.get(togglePosition).setStatus(!tasks.get(togglePosition).getIsComplete());
+        tasks.get(togglePosition).setIsComplete(!tasks.get(togglePosition).getIsComplete());
     }
 
     public void moveCompletedTasksToBottom() {
@@ -344,6 +351,14 @@ public class Todo {
 
             Task task = tasks.get(fromPosition);
             String taskLink = task.getLinkUrl() == null ? null : task.getLinkUrl().toString();
+
+
+            // todo remove this. Just testing getAgeInDays()
+            System.out.println("getAgeInDays(): " + task.getAgeInDays());
+
+
+
+
             if (fromPosition == newPosition) {
                 return;
             } else if (fromPosition < newPosition) {
@@ -405,7 +420,7 @@ public class Todo {
     }
 
     private void openLinkDialogue() {
-        // copied exactly from updateTaskName()
+        // copied exactly from updateTaskName(). Not DRY at all.
         System.out.println("Task link to open:");
         try {
             int openLinkPos = Integer.parseInt(scanner.nextLine()) - 1;
@@ -565,14 +580,39 @@ public class Todo {
 
         public Task(String name, Boolean isComplete, URI linkUrl) {
             setName(name);
-            setStatus(isComplete);
+            setIsComplete(isComplete);
             setLinkUrl(linkUrl);
+            setCreationDate();
         }
 
-        private String name;
+        private Date creationDate;
         private Boolean isComplete;
+        private String name;
         private URI linkUrl = null;
 
+
+
+        public long getAgeInDays() {
+            Date today = getCurrentDate();
+            long diffInMillies = Math.abs(today.getTime() - getCreationDate().getTime());
+            long diff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+            System.out.println("diff in days: " + diff);
+            return diff;
+        }
+
+        private static Date getCurrentDate() {
+            LocalDateTime localDateTime = LocalDateTime.now();
+            ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneOffset.systemDefault());
+            Instant instant = zonedDateTime.toInstant();
+            return Date.from(instant);
+        }
+        public void setCreationDate() {
+            this.creationDate = getCurrentDate();
+        }
+
+        public Date getCreationDate() {
+            return creationDate;
+        }
         public String getName() {
             return name;
         }
@@ -585,7 +625,7 @@ public class Todo {
             return isComplete;
         }
 
-        public void setStatus(Boolean newStatus) {
+        public void setIsComplete(Boolean newStatus) {
             this.isComplete = newStatus;
         }
 
